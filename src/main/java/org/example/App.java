@@ -4,6 +4,8 @@ import java.sql.*;
 import java.util.Properties;
 import java.io.FileInputStream;
 import java.io.IOException;
+import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.configuration.FluentConfiguration;
 
 public class App {
     private Connection connection;
@@ -20,9 +22,18 @@ public class App {
 
     public void run() {
         try {
+            // Загрузка конфигурации
             Properties props = loadProperties();
+
+            // Выполнение миграций БД
+            runDatabaseMigrations(props);
+
+            // Подключение к БД
             connectToDatabase(props);
+
+            // Демонстрация CRUD операций
             demonstrateCRUDOperations();
+
         } catch (SQLException | IOException e) {
             System.err.println("Ошибка: " + e.getMessage());
             e.printStackTrace();
@@ -39,22 +50,40 @@ public class App {
         return props;
     }
 
+    private void runDatabaseMigrations(Properties props) {
+        String url = props.getProperty("db.url");
+        String username = props.getProperty("db.username");
+        String password = props.getProperty("db.password");
+
+        System.out.println("Выполнение миграций базы данных...");
+
+        Flyway flyway = Flyway.configure()
+                .dataSource(url, username, password)
+                .locations("classpath:db/migration")
+                .load();
+
+        // Запуск миграций
+        flyway.migrate();
+
+        System.out.println("Миграции базы данных успешно выполнены!");
+    }
+
     private void connectToDatabase(Properties props) throws SQLException {
         String url = props.getProperty("db.url");
         String username = props.getProperty("db.username");
         String password = props.getProperty("db.password");
 
         connection = DriverManager.getConnection(url, username, password);
-        System.out.println("✅ Успешное подключение к базе данных автосалона");
+        System.out.println("Успешное подключение к базе данных автосалона!!!");
     }
 
     private void demonstrateCRUDOperations() throws SQLException {
         connection.setAutoCommit(false);
 
         try {
-            System.out.println("\n=== АВТОСАЛОН - ДЕМОНСТРАЦИЯ CRUD ОПЕРАЦИЙ ===\n");
+            System.out.println("\n===+++++++++++++++++++++++ АВТОСАЛОН - ДЕМОНСТРАЦИЯ CRUD ОПЕРАЦИЙ +++++++++++++++===\n");
 
-            // 1. Добавление нового автомобиля и клиента
+            // 1. Вставка нового товара и покупателя
             insertNewCarAndCustomer();
 
             // 2. Создание записи на тест-драйв
@@ -73,11 +102,11 @@ public class App {
             deleteTestRecords();
 
             connection.commit();
-            System.out.println("\n✅ Все операции автосалона успешно выполнены!");
+            System.out.println("\n Все операции автосалона успешно выполнены!");
 
         } catch (SQLException e) {
             connection.rollback();
-            System.err.println("❌ Ошибка при выполнении операций. Транзакция откачена.");
+            System.err.println(" Ошибка при выполнении операций. Транзакция откачена.");
             throw e;
         } finally {
             connection.setAutoCommit(true);
@@ -87,7 +116,7 @@ public class App {
     private void insertNewCarAndCustomer() throws SQLException {
         System.out.println("1. ДОБАВЛЕНИЕ НОВОГО АВТОМОБИЛЯ И КЛИЕНТА:");
 
-        // Добавление нового автомобиля
+        // Вставка нового автомобиля
         String insertCarSQL = """
             INSERT INTO car (brand_id, model, year, color, price, mileage, vin, 
                            engine_volume, transmission, fuel_type, is_available) 
@@ -111,10 +140,10 @@ public class App {
             pstmt.setBoolean(11, true);
 
             int rowsAffected = pstmt.executeUpdate();
-            System.out.println("   ✅ Добавлен новый автомобиль Toyota RAV4: " + rowsAffected + " строк(а)");
+            System.out.println("Добавлен новый автомобиль Toyota RAV4: " + rowsAffected + " строк(а)");
         }
 
-        // Добавление нового клиента
+        // Вставка нового клиента
         String insertCustomerSQL = """
             INSERT INTO customer (first_name, last_name, phone, email, 
                                 passport_series, passport_number, address) 
@@ -131,7 +160,7 @@ public class App {
             pstmt.setString(7, "Москва, ул. Солнечная, д. 45");
 
             int rowsAffected = pstmt.executeUpdate();
-            System.out.println("   ✅ Добавлен новый клиент Андрей Волков: " + rowsAffected + " строк(а)");
+            System.out.println("Добавлен новый клиент Андрей Волков: " + rowsAffected + " строк(а)");
         }
     }
 
@@ -157,7 +186,7 @@ public class App {
             pstmt.setString(5, "Новый клиент, интересуется кроссоверами");
 
             int rowsAffected = pstmt.executeUpdate();
-            System.out.println("   ✅ Создана запись на тест-драйв: " + rowsAffected + " строк(а)");
+            System.out.println("Создана запись на тест-драйв: " + rowsAffected + " строк(а)");
         }
     }
 
@@ -184,9 +213,7 @@ public class App {
         try (Statement stmt = connection.createStatement();
              ResultSet rs = stmt.executeQuery(selectCarsSQL)) {
 
-            System.out.println("   ╔══════════╦════════════╦══════╦══════════╦══════════════╦══════════╦═════════════╗");
-            System.out.println("   ║ Бренд    ║ Модель     ║ Год  ║ Цвет     ║ Цена         ║ Пробег   ║ КПП         ║");
-            System.out.println("   ╠══════════╬════════════╬══════╬══════════╬══════════════╬══════════╬═════════════╣");
+            System.out.println("Бренд    Модель        Год     Цвет      Цена       Пробег       КПП        ");
 
             while (rs.next()) {
                 String brand = rs.getString("brand_name");
@@ -202,11 +229,10 @@ public class App {
                 if (model.length() > 10) model = model.substring(0, 9) + ".";
                 if (color.length() > 8) color = color.substring(0, 7) + ".";
 
-                System.out.printf("   ║ %-8s ║ %-10s ║ %-4d ║ %-8s ║ %-10.2f ║ %-8d ║ %-11s ║%n",
+                System.out.printf(" %-8s  %-10s  %-4d  %-8s  %-10.2f  %-8d  %-11s %n",
                         brand, model, year, color, price/1000000, mileage, transmission);
             }
-            System.out.println("   ╚══════════╩════════════╩══════╩══════════╩══════════════╩══════════╩═════════════╝");
-            System.out.println("   * Цены указаны в млн руб.");
+           System.out.println("   * Цены указаны в млн руб.");
         }
     }
 
@@ -228,22 +254,22 @@ public class App {
         """;
 
         try (PreparedStatement pstmt = connection.prepareStatement(insertSaleSQL)) {
-            pstmt.setString(1, "Camry");
+            pstmt.setString(1, "Rio");
             pstmt.setString(2, "andrey.volkov@mail.ru");
-            pstmt.setDouble(3, 2450000.00);
-            pstmt.setString(4, "Сергей Иванов");
+            pstmt.setDouble(3, 1150000.00);
+            pstmt.setString(4, "Сергей Могрицкий");
             pstmt.setString(5, "Кредит");
             pstmt.setString(6, "ДГ-2024-006");
 
             int rowsAffected = pstmt.executeUpdate();
-            System.out.println("   ✅ Зарегистрирована продажа Toyota Camry: " + rowsAffected + " строк(а)");
+            System.out.println("Зарегистрирована продажа Kia Rio: " + rowsAffected + " строк(а)");
 
             // Обновляем статус автомобиля
             String updateCarSQL = "UPDATE car SET is_available = false WHERE model = ? AND is_available = true";
             try (PreparedStatement updateStmt = connection.prepareStatement(updateCarSQL)) {
-                updateStmt.setString(1, "Camry");
+                updateStmt.setString(1, "Rio");
                 updateStmt.executeUpdate();
-                System.out.println("   ✅ Статус автомобиля обновлен: продан");
+                System.out.println("Статус автомобиля обновлен: продан");
             }
         }
     }
@@ -260,7 +286,7 @@ public class App {
 
         try (Statement stmt = connection.createStatement()) {
             int rowsAffected = stmt.executeUpdate(updatePriceSQL);
-            System.out.println("   ✅ Применена скидка 8% для " + rowsAffected + " автомобилей с пробегом");
+            System.out.println("Применена скидка 8% для " + rowsAffected + " автомобилей с пробегом");
         }
 
         // Обновление пробега после тест-драйвов
@@ -275,7 +301,7 @@ public class App {
 
         try (Statement stmt = connection.createStatement()) {
             int rowsAffected = stmt.executeUpdate(updateMileageSQL);
-            System.out.println("   ✅ Обновлен пробег для " + rowsAffected + " автомобилей после тест-драйвов");
+            System.out.println("Обновлен пробег для " + rowsAffected + " автомобилей после тест-драйвов");
         }
     }
 
@@ -287,7 +313,7 @@ public class App {
         try (PreparedStatement pstmt = connection.prepareStatement(deleteSaleSQL)) {
             pstmt.setString(1, "ДГ-2024-006");
             int rowsAffected = pstmt.executeUpdate();
-            System.out.println("   ✅ Удалено продаж: " + rowsAffected + " строк(а)");
+            System.out.println("Удалено продаж: " + rowsAffected + " строк(а)");
         }
 
         // Удаление тестового тест-драйва
@@ -295,7 +321,7 @@ public class App {
         try (PreparedStatement pstmt = connection.prepareStatement(deleteTestDriveSQL)) {
             pstmt.setString(1, "%Новый клиент%");
             int rowsAffected = pstmt.executeUpdate();
-            System.out.println("   ✅ Удалено тест-драйвов: " + rowsAffected + " строк(а)");
+            System.out.println("Удалено тест-драйвов: " + rowsAffected + " строк(а)");
         }
 
         // Удаление тестового клиента
@@ -303,7 +329,7 @@ public class App {
         try (PreparedStatement pstmt = connection.prepareStatement(deleteCustomerSQL)) {
             pstmt.setString(1, "andrey.volkov@mail.ru");
             int rowsAffected = pstmt.executeUpdate();
-            System.out.println("   ✅ Удалено клиентов: " + rowsAffected + " строк(а)");
+            System.out.println("Удалено клиентов: " + rowsAffected + " строк(а)");
         }
 
         // Удаление тестового автомобиля
@@ -311,7 +337,7 @@ public class App {
         try (PreparedStatement pstmt = connection.prepareStatement(deleteCarSQL)) {
             pstmt.setString(1, "2T3ZF4DV5NW123456");
             int rowsAffected = pstmt.executeUpdate();
-            System.out.println("   ✅ Удалено автомобилей: " + rowsAffected + " строк(а)");
+            System.out.println("Удалено автомобилей: " + rowsAffected + " строк(а)");
         }
     }
 
@@ -319,7 +345,7 @@ public class App {
         if (connection != null) {
             try {
                 connection.close();
-                System.out.println("\n🔌 Подключение к базе данных автосалона закрыто");
+                System.out.println("\n Подключение к базе данных автосалона закрыто");
             } catch (SQLException e) {
                 System.err.println("Ошибка при закрытии подключения: " + e.getMessage());
             }
